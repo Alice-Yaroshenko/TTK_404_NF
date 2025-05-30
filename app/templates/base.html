@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
+    <!-- FontAwesome для иконок -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+    {% if title %}
+    <title>{{ title }} - My Flask App</title>
+    {% else %}
+    <title>My Flask App</title>
+    {% endif %}
+    <style>
+        /* Хак для stretched-link */
+        .card .stretched-link::after {
+            position: absolute;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            left: 0;
+            z-index: 1;
+            content: "";
+        }
+         /* Стили для контента статьи */
+        .article-content img {
+            max-width: 100%;
+            height: auto;
+            display: block; 
+            margin: 1rem auto; 
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075); 
+            border-radius: 0.25rem; 
+        }
+        /* Стили для списков внутри контента */
+        .article-content ul,
+        .article-content ol {
+            padding-left: 2rem; 
+        }
+        /* Стиль для активной ссылки в навигации (Bootstrap 5) */
+        .navbar-nav .nav-link.active {
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-light bg-light mb-3 shadow-sm">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="{{ url_for('main.index') }}">
+                <i class="fas fa-feather-alt text-primary"></i>
+                Мое Приложение
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint.startswith('main.') %}active{% endif %}" aria-current="page" href="{{ url_for('main.index') }}">
+                           <i class="fas fa-home fa-fw me-1"></i> Главная
+                        </a>
+                    </li>
+                    {% if current_user.is_authenticated %}
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.endpoint.startswith('info.') %}active{% endif %}" href="{{ url_for('info.list_articles') }}">
+                               <i class="fas fa-info-circle fa-fw me-1"></i> Полезная инф.
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.endpoint.startswith('tasks.') %}active{% endif %}"
+                               href="{{ url_for('tasks.list_tasks', status='current') }}"> 
+                                <i class="fas fa-tasks fa-fw me-1"></i> Задачи
+                                <span class="badge bg-primary rounded-pill ms-1" id="task-counter-current" style="display: none;">0</span>
+                                <span class="badge bg-secondary rounded-pill ms-1" id="task-counter-deferred" style="display: none;">0</span>
+                            </a>
+                        </li>
+                        {% if current_user.role == 'Администратор' %}
+                        <li class="nav-item">
+                             <a class="nav-link {% if request.endpoint.startswith('admin.') %}active{% endif %}" href="#"> 
+                                <i class="fas fa-user-shield fa-fw me-1"></i> Админ
+                             </a>
+                        </li>
+                        {% endif %}
+                    {% endif %}
+                </ul>
+                <ul class="navbar-nav">
+                    {% if current_user.is_anonymous %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('auth.login') }}"> <i class="fas fa-sign-in-alt me-1"></i> Вход</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('auth.register') }}"> <i class="fas fa-user-plus me-1"></i> Регистрация</a>
+                    </li>
+                    {% else %}
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownUser" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-user-circle me-1"></i> {{ current_user.full_name }}
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdownUser">
+                             <li><span class="dropdown-item-text"><small class="text-muted">{{ current_user.role }}</small></span></li>
+                             <li><hr class="dropdown-divider"></li>
+                            {# <li><a class="dropdown-item" href="#">Профиль</a></li> #}
+                            {# <li><hr class="dropdown-divider"></li> #}
+                            <li><a class="dropdown-item" href="{{ url_for('auth.logout') }}"> <i class="fas fa-sign-out-alt fa-fw me-1"></i> Выход</a></li>
+                        </ul>
+                    </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container mt-4"> 
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                <div class="alert alert-{{ category if category in ['primary', 'secondary', 'success', 'danger', 'warning', 'info', 'light', 'dark'] else 'info' }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="container mt-5 mb-3 text-center text-muted">
+        <hr>
+        <p>© {{ current_year }} Мое Flask Приложение</p> {# Используем current_year из контекста #}
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz" crossorigin="anonymous"></script>
+
+    {% block scripts %}
+    {% endblock %}
+
+</body>
+</html>
