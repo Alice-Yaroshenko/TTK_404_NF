@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+
+{% block content %}
+<nav aria-label="breadcrumb" style="--bs-breadcrumb-divider: '>';">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{{ url_for('info.list_articles') }}">Полезная информация</a></li>
+    <li class="breadcrumb-item active" aria-current="page">{{ article.title | truncate(60) }}</li>
+  </ol>
+</nav>
+
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <h1 class="mb-0 display-5">{{ article.title }}</h1>
+    <div class="ms-md-auto flex-shrink-0">
+        {% if not article.is_deleted %}
+            {% if article.author_id == current_user.id or current_user.role == 'Администратор' %}
+                <a href="{{ url_for('info.edit_article', article_id=article.id) }}" class="btn btn-outline-secondary btn-sm me-2">
+                   <i class="fas fa-edit me-1"></i> Редактировать
+                </a>
+                <button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deleteArticleModal">
+                    <i class="fas fa-trash-alt me-1"></i> Удалить
+                </button>
+            {% endif %}
+        {% elif current_user.role == 'Администратор' %}
+             {% if article.deleted_at and (datetime.now(timezone.utc) - article.deleted_at) <= timedelta(days=7) %}
+                 <form action="{{ url_for('info.restore_article', article_id=article.id) }}" method="POST" class="d-inline">
+                     {{ form.csrf_token }}
+                     <button type="submit" class="btn btn-warning btn-sm">
+                         <i class="fas fa-undo me-1"></i> Восстановить
+                     </button>
+                 </form>
+             {% else %}
+                 <span class="badge bg-secondary">Срок восстановления истек</span>
+             {% endif %}
+        {% endif %}
+    </div>
+</div>
+
+{% if article.is_deleted and current_user.role == 'Администратор' %}
+<div class="alert alert-warning d-flex align-items-center" role="alert">
+  <i class="fas fa-exclamation-triangle fa-lg me-2"></i>
+  <div>
+    Эта статья удалена {{ article.deleted_at.strftime('%d.%m.%Y в %H:%M') }}. Видна только администраторам.
+  </div>
+</div>
+{% endif %}
+
+<div class="card mb-4 shadow-sm">
+     {% if article.image_filename %}
+        {% set image_folder_path = config.ARTICLE_IMAGE_UPLOAD_FOLDER.split('/')[1:]|join('/') %}
+        {% set image_url = url_for('static', filename=image_folder_path + '/' + article.image_filename) %}
+        <img src="{{ image_url }}" class="card-img-top" alt="{{ article.title }}" style="max-height: 450px; object-fit: cover;">
+     {% endif %}
+
+    <div class="card-body">
+        <div class="article-content fs-5">
+            {{ article.content | safe if article.content else '<p class="text-muted fst-italic">Содержимое отсутствует.</p>'}}
+        </div>
+    </div>
+    <div class="card-footer text-muted small bg-light border-top">
+        Автор: <span class="fw-medium">{{ article.author.full_name if article.author else 'Н/Д' }}</span> |
+        Создано: {{ article.created_at.strftime('%d.%m.%Y в %H:%M') }} |
+        Последнее изменение: {{ article.updated_at.strftime('%d.%m.%Y в %H:%M') }}
+        (Редактор: <span class="fw-medium">{{ article.last_editor.full_name if article.last_editor else 'Н/Д' }}</span>)
+    </div>
+</div>
+
+{% if not article.is_deleted and (article.author_id == current_user.id or current_user.role == 'Администратор') %}
+<div class="modal fade" id="deleteArticleModal" tabindex="-1" aria-labelledby="deleteArticleModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteArticleModalLabel">Подтверждение удаления</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                 Вы уверены, что хотите удалить статью "{{ article.title }}"? <br>
+                 <small class="text-muted">Ее можно будет восстановить в течение 7 дней.</small>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <form action="{{ url_for('info.delete_article', article_id=article.id) }}" method="POST" class="d-inline">
+                     {{ form.csrf_token }}
+                    <button type="submit" class="btn btn-danger">Удалить</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<a href="{{ url_for('info.list_articles') }}" class="btn btn-outline-secondary">
+    <i class="fas fa-arrow-left me-1"></i> Назад к списку статей
+</a>
+
+{% endblock %}
