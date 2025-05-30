@@ -1,0 +1,119 @@
+{% extends "base.html" %} 
+
+{% block content %} 
+    <h1 class="mb-4">{{ legend or 'Работа со статьей' }}</h1>
+    <div class="row">
+        <div class="col-lg-10 col-md-12"> 
+            <form method="POST" action="" novalidate enctype="multipart/form-data">
+                {{ form.hidden_tag() }} 
+                <fieldset class="form-group"> 
+                    <div class="mb-3">
+                        {{ form.title.label(class="form-label") }}
+                        {{ form.title(class="form-control" + (" is-invalid" if form.title.errors else "")) }}
+                        {% if form.title.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.title.errors %}
+                                    <span>{{ error }}</span>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="mb-3">
+                        {{ form.content.label(class="form-label") }}
+                        {{ form.content(class="form-control" + (" is-invalid" if form.content.errors else ""), rows="15", id="article_content_editor") }}
+                        {% if form.content.errors %}
+                             <div class="invalid-feedback d-block">
+                                {% for error in form.content.errors %}
+                                    <span>{{ error }}</span>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="mb-3">
+                        {{ form.image.label(class="form-label") }}
+                        {{ form.image(class="form-control" + (" is-invalid" if form.image.errors else "")) }}
+                        {% if form.image.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.image.errors %}
+                                    <span>{{ error }}</span>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        <small class="form-text text-muted">Выберите файл изображения (png, jpg, jpeg, gif). Если оставить поле пустым при редактировании, текущее изображение сохранится.</small>
+                    </div>
+                    {% if current_image %}
+                     <div class="mb-3">
+                         <p class="mb-1"><small class="text-muted">Текущее изображение:</small></p>
+                         {% set image_folder_path = config.ARTICLE_IMAGE_UPLOAD_FOLDER.split('/')[1:]|join('/') %}
+                         <img src="{{ url_for('static', filename=image_folder_path + '/' + current_image) }}" alt="Текущее изображение" style="max-height: 150px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                     </div>
+                    {% endif %}
+                </fieldset>
+                <div class="form-group mt-4">
+                    {{ form.submit(class="btn btn-primary") }}
+                    {% if article %} 
+                        <a href="{{ url_for('info.view_article', article_id=article.id) }}" class="btn btn-outline-secondary ms-2">Отмена</a>
+                    {% else %}
+                        <a href="{{ url_for('info.list_articles') }}" class="btn btn-outline-secondary ms-2">Отмена</a>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+    </div>
+
+{% endblock %} 
+{% block scripts %}
+
+    <script src="https://cdn.ckeditor.com/ckeditor5/41.4.2/classic/ckeditor.js"></script> 
+    <script src="https://cdn.ckeditor.com/ckeditor5/41.4.2/classic/translations/ru.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Проверяем, нет ли уже инстанса редактора для этого элемента
+            // Это простая защита на случай, если скрипт по какой-то причине выполнится дважды
+            const editorElement = document.querySelector('#article_content_editor');
+            if (editorElement && !editorElement.ckeditorInstance) {
+                 ClassicEditor
+                    .create( editorElement, {
+                        // Настройки редактора
+                        language: 'ru',
+                        toolbar: {
+                            items: [
+                                'heading', '|',
+                                'bold', 'italic', 'underline', '|',
+                                'bulletedList', 'numberedList', '|',
+                                'outdent', 'indent', '|',
+                                'link', 'blockQuote', 'insertTable', '|',
+                                'code', 'codeBlock', '|',
+                                'undo', 'redo'
+                            ]
+                        },
+                        // Можно добавить другие плагины/настройки при необходимости
+                    } )
+                    .then( editor => {
+                        console.log( 'CKEditor 5 был успешно инициализирован', editor );
+                        // Сохраняем ссылку на инстанс в самом элементе
+                        editorElement.ckeditorInstance = editor;
+
+                        // Находим форму и добавляем обработчик отправки
+                        // для синхронизации данных из редактора в textarea
+                        const form = editorElement.closest('form'); 
+                        if (form) {
+                            form.addEventListener('submit', function() {
+                                editorElement.value = editor.getData(); 
+                            });
+                        } else {
+                            console.warn("Не удалось найти родительскую форму для CKEditor.")
+                        }
+                    } )
+                    .catch( error => {
+                        console.error( 'Ошибка инициализации CKEditor 5:', error );
+                    } );
+            } else if (editorElement && editorElement.ckeditorInstance) {
+                 console.log('CKEditor 5 уже инициализирован для #article_content_editor');
+            } else {
+                console.error('Не найден элемент #article_content_editor для CKEditor 5');
+            }
+        });
+    </script>
+{% endblock %} 
