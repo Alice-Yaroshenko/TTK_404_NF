@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap">
+    <h1 class="mb-2 mb-md-0">История изменений статей</h1>
+    <a href="{{ url_for('info.list_articles') }}" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-left me-1"></i> Назад к статьям
+    </a>
+</div>
+
+{% if entries %}
+<div class="table-responsive shadow-sm">
+    <table class="table table-striped table-hover table-sm align-middle caption-top"> 
+        <caption class="px-2 text-muted"><small>Список всех событий, связанных со статьями.</small></caption>
+        <thead class="table-light">
+            <tr>
+                <th scope="col" style="width: 15%;">Дата и время</th>
+                <th scope="col" style="width: 20%;">Пользователь</th>
+                <th scope="col">Статья</th>
+                <th scope="col" style="width: 15%;">Событие</th>
+                <th scope="col" style="width: 15%;" class="text-center">Действия</th> 
+            </tr>
+        </thead>
+        <tbody>
+            {% for entry in entries %}
+            <tr>
+                <td>{{ entry.timestamp.strftime('%d.%m.%Y %H:%M:%S') }}</td>
+                <td>
+                    <i class="fas fa-user text-muted me-1"></i>
+                    {{ entry.user.full_name if entry.user else 'Н/Д' }}
+                    {% if entry.user and entry.user.role == 'Администратор' %}
+                     <span class="badge bg-secondary ms-1">Админ</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if entry.article and not entry.article.is_deleted %}
+                        <a href="{{ url_for('info.view_article', article_id=entry.article_id) }}" title="{{ entry.article.title }}">
+                            <i class="far fa-file-alt text-muted me-1"></i> {{ entry.article.title | truncate(60) }}
+                        </a>
+                    {% elif entry.article %}
+                         <span title="{{ entry.article.title }}">
+                             <i class="far fa-file-alt text-muted me-1"></i> {{ entry.article.title | truncate(60) }} (удалена)
+                         </span>
+                    {% else %}
+                        <i class="far fa-file-alt text-muted me-1"></i> Статья удалена (ID: {{ entry.article_id }})
+                    {% endif %}
+                </td>
+                <td class="text-center">
+                    {% if entry.event_type == 'created' %}
+                        <span class="badge rounded-pill bg-success"><i class="fas fa-plus me-1"></i> Создание</span>
+                    {% elif entry.event_type == 'updated' %}
+                        <span class="badge rounded-pill bg-info text-dark"><i class="fas fa-pencil-alt me-1"></i> Изменение</span>
+                    {% elif entry.event_type == 'deleted' %}
+                        <span class="badge rounded-pill bg-danger"><i class="fas fa-trash-alt me-1"></i> Удаление</span>
+                    {% elif entry.event_type == 'restored' %}
+                        <span class="badge rounded-pill bg-warning text-dark"><i class="fas fa-undo me-1"></i> Восстановление</span>
+                    {% else %}
+                        {{ entry.event_type }}
+                    {% endif %}
+                </td>
+                <td class="text-center"> 
+                    {% if entry.event_type == 'deleted' and current_user.role == 'Администратор' %}
+                        {% if entry.article and entry.article.is_deleted %}
+                             {% if (datetime.now(timezone.utc) - entry.timestamp) <= timedelta(days=7) %} 
+                                 <form action="{{ url_for('info.restore_article', article_id=entry.article_id) }}" method="POST" class="d-inline">
+                                     {{ form.csrf_token }} 
+                                     <button type="submit" class="btn btn-warning btn-sm" title="Восстановить статью">
+                                         <i class="fas fa-undo"></i>
+                                     </button>
+                                 </form>
+                             {% else %}
+                                <span class="badge bg-light text-dark border" title="Срок восстановления истек"><i class="far fa-clock"></i></span>
+                             {% endif %}
+                        {% elif entry.article and not entry.article.is_deleted %}
+                             <span class="badge bg-light text-dark border" title="Статья уже восстановлена"><i class="fas fa-check"></i></span>
+                        {% endif %}
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% if pagination and pagination.pages > 1 %}
+<nav aria-label="Page navigation" class="mt-4">
+  <ul class="pagination justify-content-center">
+    <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+      <a class="page-link" href="{{ url_for(request.endpoint, page=pagination.prev_num, **request.view_args) if pagination.has_prev else '#' }}" tabindex="-1" aria-disabled="true">
+          <i class="fas fa-angle-left"></i>
+      </a>
+    </li>
+    {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
+      {% if page_num %}
+        <li class="page-item {% if page_num == pagination.page %}active{% endif %}">
+          <a class="page-link" href="{{ url_for(request.endpoint, page=page_num, **request.view_args) }}">{{ page_num }}</a>
+        </li>
+      {% else %}
+        <li class="page-item disabled"><span class="page-link">...</span></li>
+      {% endif %}
+    {% endfor %}
+    <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+      <a class="page-link" href="{{ url_for(request.endpoint, page=pagination.next_num, **request.view_args) if pagination.has_next else '#' }}">
+           <i class="fas fa-angle-right"></i>
+      </a>
+    </li>
+  </ul>
+</nav>
+{% endif %}
+
+{% else %}
+<div class="alert alert-secondary mt-4" role="alert">
+    <i class="fas fa-info-circle me-2"></i> История изменений пока пуста.
+</div>
+{% endif %}
+
+{% endblock %}
