@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <h1 class="mb-0">Задачи</h1>
+    {% if status == 'Current' or status == 'Deferred' %}
+    <a href="{{ url_for('tasks.create_task') }}" class="btn btn-primary">
+        <i class="fas fa-plus me-1"></i> Создать задачу
+    </a>
+    {% endif %}
+</div>
+
+<ul class="nav nav-tabs mb-3">
+  <li class="nav-item">
+    <a class="nav-link {% if status == 'Current' %}active{% endif %}"
+       href="{{ url_for('tasks.list_tasks', status='Current') }}">
+        Текущие
+        {% if counters.current > 0 %}
+            <span class="badge bg-primary rounded-pill ms-1">{{ counters.current }}</span>
+        {% endif %}
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link {% if status == 'Deferred' %}active{% endif %}"
+       href="{{ url_for('tasks.list_tasks', status='Deferred') }}">
+        Отложенные
+        {% if counters.deferred > 0 %}
+            <span class="badge bg-secondary rounded-pill ms-1">{{ counters.deferred }}</span>
+        {% endif %}
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link {% if status == 'Completed' %}active{% endif %}"
+       href="{{ url_for('tasks.list_tasks', status='Completed') }}">
+        Выполненные
+    </a>
+  </li>
+       <a href="{{ url_for('tasks.task_history') }}" class="nav-link text-muted">
+           <i class="fas fa-history me-1"></i> История задач
+       </a>
+   </li> 
+</ul>
+
+
+{% if tasks %}
+    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+        {% for task in tasks %}
+            <div class="col">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <a href="{{ url_for('tasks.view_task', task_id=task.id) }}" class="text-decoration-none stretched-link link-dark">{{ task.title }}</a>
+                        </h5>
+                        <p class="card-text small text-muted mb-2">
+                            Приоритет:
+                            {% if task.priority == 'Высокий' %}
+                                <span class="badge bg-danger">{{ task.priority }}</span>
+                            {% elif task.priority == 'Средний' %}
+                                <span class="badge bg-warning text-dark">{{ task.priority }}</span>
+                            {% else %}
+                                <span class="badge bg-success">{{ task.priority }}</span>
+                            {% endif %}
+                        </p>
+                        {% if task.due_date %}
+                        <p class="card-text small mb-2 {% if task.due_date < date.today() and status != 'Completed' %}text-danger fw-bold{% endif %}">
+                            Срок: {{ task.due_date.strftime('%d.%m.%Y') }}
+                        </p>
+                        {% endif %}
+                        {# <p class="card-text">{{ task.description | striptags | truncate(100) }}</p> #}
+                    </div>
+                    <div class="card-footer bg-light border-top pt-2 pb-2">
+                         <small class="text-muted d-block">
+                             Отв:
+                             {% if task.assignee %}
+                                <i class="fas fa-user-check me-1"></i>{{ task.assignee.full_name }}
+                             {% else %}
+                                <i class="fas fa-user-times me-1"></i>Не назначен
+                             {% endif %}
+                         </small>
+                         <small class="text-muted d-block">Создана: {{ task.created_at.strftime('%d.%m.%y %H:%M') }}</small>
+                    </div>
+                </div>
+                 {# {% include 'tasks/_delete_task_modal.html' %} #}
+            </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="alert alert-secondary mt-4">
+        Задач в разделе "{{ status_display_names.get(status, status) }}" пока нет.
+        {% if status == 'Current' or status == 'Deferred' %}
+             Вы можете <a href="{{ url_for('tasks.create_task') }}" class="alert-link">создать новую задачу</a>.
+        {% endif %}
+    </div>
+{% endif %}
+
+{% endblock %}
