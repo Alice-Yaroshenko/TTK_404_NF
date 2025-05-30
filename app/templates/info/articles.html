@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap">
+    <h1 class="mb-2 mb-md-0">Полезная информация</h1>
+    <div class="ms-md-auto">
+         <a href="{{ url_for('info.create_article') }}" class="btn btn-primary me-2">
+             <i class="fas fa-plus me-1"></i> Создать статью
+        </a>
+         <a href="{{ url_for('info.article_history') }}" class="btn btn-outline-secondary">
+             <i class="fas fa-history me-1"></i> История изменений
+         </a>
+    </div>
+</div>
+
+{% if articles %}
+<div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+    {% for article in articles %}
+    <div class="col">
+        <div class="card h-100 shadow-sm position-relative">
+            {% if article.image_filename %}
+                {% set image_folder_path = config.ARTICLE_IMAGE_UPLOAD_FOLDER.split('/')[1:]|join('/') %}
+                {% set image_url = url_for('static', filename=image_folder_path + '/' + article.image_filename) %}
+                <img src="{{ image_url }}" class="card-img-top" alt="{{ article.title }}" style="height: 180px; object-fit: cover;">
+            {% else %}
+                 <svg class="bd-placeholder-img card-img-top" width="100%" height="180" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Placeholder: Нет фото" preserveAspectRatio="xMidYMid slice" focusable="false"><title>Нет фото</title><rect width="100%" height="100%" fill="#6c757d"></rect><text x="50%" y="50%" fill="#dee2e6" dy=".3em">Нет фото</text></svg>
+            {% endif %}
+
+                <h5 class="card-title mb-2">
+                     <a href="{{ url_for('info.view_article', article_id=article.id) }}" class="text-decoration-none stretched-link link-dark">{{ article.title }}</a>
+                </h5>
+                <p class="card-text small text-muted flex-grow-1">{{ article.content | striptags | truncate(120) }}</p>
+            </div>
+
+            {% if article.author_id == current_user.id or current_user.role == 'Администратор' %}
+            <div class="position-absolute top-0 end-0 p-2" style="z-index: 5;">
+                <a href="{{ url_for('info.edit_article', article_id=article.id) }}" class="btn btn-sm btn-light border me-1" title="Редактировать">
+                    <i class="fas fa-edit"></i>
+                </a>
+                <button type="button" class="btn btn-sm btn-light border" data-bs-toggle="modal" data-bs-target="#deleteArticleModal-{{ article.id }}" title="Удалить">
+                    <i class="fas fa-trash-alt text-danger"></i>
+                </button>
+            </div>
+            {% endif %}
+
+            <div class="card-footer bg-white border-top pt-2 pb-2">
+                <small class="text-muted d-block">Автор: {{ article.author.full_name if article.author else 'Н/Д' }}</small>
+                <small class="text-muted d-block">Ред.: {{ article.last_editor.full_name if article.last_editor else 'Н/Д' }}</small>
+                <small class="text-muted d-block">Обновлено: {{ article.updated_at.strftime('%d.%m.%y %H:%M') }}</small>
+            </div>
+        </div>
+
+         {% if article.author_id == current_user.id or current_user.role == 'Администратор' %}
+         <div class="modal fade" id="deleteArticleModal-{{ article.id }}" tabindex="-1" aria-labelledby="deleteArticleModalLabel-{{ article.id }}" aria-hidden="true">
+             <div class="modal-dialog modal-dialog-centered">
+                 <div class="modal-content">
+                     <div class="modal-header">
+                         <h5 class="modal-title" id="deleteArticleModalLabel-{{ article.id }}">Подтверждение удаления</h5>
+                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                     </div>
+                     <div class="modal-body">
+                         Вы уверены, что хотите удалить статью "{{ article.title }}"? <br>
+                         <small class="text-muted">Ее можно будет восстановить в течение 7 дней из истории.</small>
+                     </div>
+                     <div class="modal-footer">
+                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                         <form action="{{ url_for('info.delete_article', article_id=article.id) }}" method="POST" class="d-inline">
+                              {{ form.csrf_token }}
+                             <button type="submit" class="btn btn-danger">Удалить</button>
+                         </form>
+                     </div>
+                 </div>
+             </div>
+         </div>
+         {% endif %}
+    </div>
+    {% endfor %}
+</div>
+
+{% if pagination and pagination.pages > 1 %}
+<nav aria-label="Page navigation" class="mt-4">
+  <ul class="pagination justify-content-center">
+    <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+      <a class="page-link" href="{{ url_for(request.endpoint, page=pagination.prev_num, **request.view_args) if pagination.has_prev else '#' }}" tabindex="-1" aria-disabled="true">
+          <i class="fas fa-angle-left"></i>
+      </a>
+    </li>
+    {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
+      {% if page_num %}
+        <li class="page-item {% if page_num == pagination.page %}active{% endif %}">
+          <a class="page-link" href="{{ url_for(request.endpoint, page=page_num, **request.view_args) }}">{{ page_num }}</a>
+        </li>
+      {% else %}
+        <li class="page-item disabled"><span class="page-link">...</span></li>
+      {% endif %}
+    {% endfor %}
+    <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+      <a class="page-link" href="{{ url_for(request.endpoint, page=pagination.next_num, **request.view_args) if pagination.has_next else '#' }}">
+          <i class="fas fa-angle-right"></i>
+      </a>
+    </li>
+  </ul>
+</nav>
+{% endif %}
+
+{% else %}
+<div class="alert alert-secondary mt-4" role="alert"> 
+    <i class="fas fa-info-circle me-2"></i> Статей пока нет. Вы можете <a href="{{ url_for('info.create_article') }}" class="alert-link">создать первую</a>!
+</div>
+{% endif %}
+
+{% endblock %}
