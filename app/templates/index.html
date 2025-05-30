@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h1>Привет, {% if current_user.is_authenticated %}{{ current_user.full_name }}{% else %}Гость{% endif %}!</h1>
+    <p>Это главная страница вашего нового приложения.</p>
+    {% if not current_user.is_authenticated %}
+    <p>Вы можете <a href="{{ url_for('auth.login') }}">войти</a> или <a href="{{ url_for('auth.register') }}">зарегистрироваться</a>.</p>
+    {% endif %}
+{% endblock %}
